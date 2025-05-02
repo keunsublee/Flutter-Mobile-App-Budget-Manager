@@ -1,21 +1,31 @@
-# Use latest stable channel SDK.
+# Build stage
 FROM dart:stable AS build
 
-# Resolve app dependencies.
 WORKDIR /app
 COPY pubspec.* ./
 RUN dart pub get
 
-# Copy app source code (except anything in .dockerignore) and AOT compile app.
 COPY . .
 RUN dart compile exe bin/server.dart -o bin/server
 
-# Build minimal serving image from AOT-compiled `/server`
-# and the pre-built AOT-runtime in the `/runtime/` directory of the base image.
-FROM scratch
-COPY --from=build /runtime/ /
-COPY --from=build /app/bin/server /app/bin/
+# Runtime stage
+FROM debian:bullseye-slim
 
-# Start server.
+# Install system dependencies
+RUN apt-get update && apt-get install -y libpq5 ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Cloud SQL socket will be mounted automatically in Cloud Run
+VOLUME ["/cloudsql"]
+
+# Copy runtime and app
+COPY --from=build /runtime/ /runtime/
+COPY --from=build /app/bin/server /app/server
+
+# Set environment
+ENV PATH="/runtime/bin:$PATH"
+
+# Expose the default port used by Shelf/Cloud Run
 EXPOSE 8080
-CMD ["/app/bin/server"]
+
+# Run the server
+CMD ["/app/server"]
