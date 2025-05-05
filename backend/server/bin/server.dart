@@ -365,7 +365,7 @@ void main(List<String> args) async {
     //   password: 'admin',
     //   port: 5432,
     // ),
-    // settings: ConnectionSettings(sslMode: SslMode.disable),
+    settings: ConnectionSettings(sslMode: SslMode.disable),
   );
   print('Connected to Cloud SQL from Cloud Run!');
 
