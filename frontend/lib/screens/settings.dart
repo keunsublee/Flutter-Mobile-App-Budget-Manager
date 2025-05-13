@@ -1,8 +1,28 @@
 import 'package:flutter/material.dart';
 import 'profile.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDarkMode = false;
+  bool _notificationsEnabled = true;
+
+  void _toggleTheme() {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+  }
+
+  void _toggleNotifications() {
+    setState(() {
+      _notificationsEnabled = !_notificationsEnabled;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +88,6 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 25),
-                      
-                      // Edit Profile - Clickable
                       InkWell(
                         onTap: () {
                           Navigator.push(
@@ -108,26 +126,92 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 25),
                       
-                      // Notifications
-                      const Padding(
-                        padding: EdgeInsets.only(left: 40.0),
-                        child: Text(
-                          'Notifications',
-                          style: TextStyle(
-                            fontSize: 18,
-                          ),
+                      // Notifications with toggle switch
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40.0, right: 20.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Notifications',
+                              style: TextStyle(
+                                fontSize: 18,
+                              ),
+                            ),
+                            // Custom toggle switch for notifications
+                            GestureDetector(
+                              onTap: _toggleNotifications,
+                              child: Container(
+                                width: 60,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  color: Colors.black,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    AnimatedPositioned(
+                                      duration: const Duration(milliseconds: 200),
+                                      left: _notificationsEnabled ? 30 : 0,
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 25),
                       
-                      // Theme
-                      const Padding(
-                        padding: EdgeInsets.only(left: 40.0),
-                        child: Text(
-                          'Theme',
-                          style: TextStyle(
-                            fontSize: 18,
-                          ),
+                      // Theme with toggle switch
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40.0, right: 20.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Theme',
+                              style: TextStyle(
+                                fontSize: 18,
+                              ),
+                            ),
+                            // Custom toggle switch for theme
+                            GestureDetector(
+                              onTap: _toggleTheme,
+                              child: Container(
+                                width: 60,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  color: Colors.black,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    AnimatedPositioned(
+                                      duration: const Duration(milliseconds: 200),
+                                      left: _isDarkMode ? 30 : 0,
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -139,9 +223,9 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
       bottomNavigationBar: Container(
-        height: 60, // Smaller height for bottom navigation
+        height: 60, 
         decoration: const BoxDecoration(
-          color: Color(0xFFF8F8F8), // Very light gray/almost white
+          color: Color(0xFFF8F8F8), 
           border: Border(
             top: BorderSide(
               color: Colors.grey,
@@ -165,7 +249,7 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.settings, size: 26, color: Color(0xFF673AB7)),
+              icon: const Icon(Icons.settings, size: 26),
               onPressed: () {
                 // Already on settings
               },
