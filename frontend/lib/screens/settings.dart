@@ -5,6 +5,7 @@ import 'profile.dart';
 import '../auth.dart';
 import 'signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/budget.dart';
 
 final _authService = AuthService();
 
@@ -318,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             IconButton(
               icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color),
               onPressed: () {
-                // Navigate to add
+                Navigator.pushReplacementNamed(context, '/budget');
               },
             ),
             IconButton(
