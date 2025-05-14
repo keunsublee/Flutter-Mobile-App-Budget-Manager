@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import 'profile.dart';
+import 'budget.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -255,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             IconButton(
               icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color),
               onPressed: () {
-                // Navigate to add
+                Navigator.pushReplacementNamed(context, '/budget');
               },
             ),
             IconButton(
