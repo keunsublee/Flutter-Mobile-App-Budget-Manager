@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../theme.dart';
 import 'profile.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -9,14 +11,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isDarkMode = false;
-  bool _notificationsEnabled = true;
-
-  void _toggleTheme() {
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-  }
+  bool _notificationsEnabled = false;
 
   void _toggleNotifications() {
     setState(() {
@@ -26,6 +21,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+    
     return Scaffold(
       body: Column(
         children: [
@@ -48,9 +46,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFFD3D3D3), // Light gray
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
                 ),
@@ -63,14 +61,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       // Personal Details Section
                       Row(
-                        children: const [
-                          Icon(Icons.person, size: 28),
-                          SizedBox(width: 12),
+                        children: [
+                          Icon(Icons.person, size: 28, color: Theme.of(context).iconTheme.color),
+                          const SizedBox(width: 12),
                           Text(
                             'Personal Details',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
                             ),
                           ),
                         ],
@@ -78,16 +77,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 25),
                       
                       // Account Creation Date
-                      const Padding(
-                        padding: EdgeInsets.only(left: 40.0),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40.0),
                         child: Text(
                           'Account Creation Date',
                           style: TextStyle(
                             fontSize: 18,
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
                           ),
                         ),
                       ),
                       const SizedBox(height: 25),
+                      
+                      // Edit Profile - Clickable
                       InkWell(
                         onTap: () {
                           Navigator.push(
@@ -97,12 +99,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           );
                         },
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 40.0),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 40.0),
                           child: Text(
                             'Edit Profile',
                             style: TextStyle(
                               fontSize: 18,
+                              color: Theme.of(context).textTheme.bodyMedium?.color,
                             ),
                           ),
                         ),
@@ -112,14 +115,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       
                       // Preferences Section
                       Row(
-                        children: const [
-                          Icon(Icons.settings, size: 28),
-                          SizedBox(width: 12),
+                        children: [
+                          Icon(Icons.settings, size: 28, color: Theme.of(context).iconTheme.color),
+                          const SizedBox(width: 12),
                           Text(
                             'Preferences',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              color: Theme.of(context).textTheme.bodyLarge?.color,
                             ),
                           ),
                         ],
@@ -132,10 +136,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Notifications',
                               style: TextStyle(
                                 fontSize: 18,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                             // Custom toggle switch for notifications
@@ -158,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         height: 30,
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Colors.white,
+                                          color: Color(0xFF36859A), // Teal/blue color
                                         ),
                                       ),
                                     ),
@@ -177,15 +182,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Theme',
                               style: TextStyle(
                                 fontSize: 18,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
                               ),
                             ),
                             // Custom toggle switch for theme
                             GestureDetector(
-                              onTap: _toggleTheme,
+                              onTap: () {
+                                themeProvider.toggleTheme();
+                              },
                               child: Container(
                                 width: 60,
                                 height: 30,
@@ -197,13 +205,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   children: [
                                     AnimatedPositioned(
                                       duration: const Duration(milliseconds: 200),
-                                      left: _isDarkMode ? 30 : 0,
+                                      left: isDarkMode ? 30 : 0,
                                       child: Container(
                                         width: 30,
                                         height: 30,
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Colors.white,
+                                          color: Color(0xFF36859A), // Teal/blue color
                                         ),
                                       ),
                                     ),
@@ -224,11 +232,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       bottomNavigationBar: Container(
         height: 60, 
-        decoration: const BoxDecoration(
-          color: Color(0xFFF8F8F8), 
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark 
+              ? Colors.grey[900] 
+              : const Color(0xFFF8F8F8),
           border: Border(
             top: BorderSide(
-              color: Colors.grey,
+              color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
               width: 0.5,
             ),
           ),
@@ -237,21 +247,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             IconButton(
-              icon: const Icon(Icons.home, size: 26),
+              icon: Icon(Icons.home, size: 26, color: Theme.of(context).iconTheme.color),
               onPressed: () {
                 // Navigate to home
               },
             ),
             IconButton(
-              icon: const Icon(Icons.add, size: 26),
+              icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color),
               onPressed: () {
                 // Navigate to add
               },
             ),
             IconButton(
-              icon: const Icon(Icons.settings, size: 26),
+              icon: Icon(
+                Icons.settings, 
+                size: 26, 
+                color: Theme.of(context).iconTheme.color,
+              ),
               onPressed: () {
-                // Already on settings
               },
             ),
           ],
