@@ -42,6 +42,7 @@ dependencies:
   provider: ^6.1.4
   firebase_data_connect: ^0.1.4+1
   image_picker: ^1.0.4
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:

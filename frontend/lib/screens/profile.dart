@@ -37,9 +37,19 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.deepPurple,
+      appBar: AppBar(
+        backgroundColor: Colors.deepPurple,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -47,7 +57,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Padding(
@@ -57,11 +67,12 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Profile Setting',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -70,8 +81,8 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                       child: Container(
                         width: 180,
                         height: 180,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.grey[700] : Colors.white,
                           shape: BoxShape.circle,
                         ),
                         child: _image != null
@@ -84,12 +95,12 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                   fit: BoxFit.cover,
                                 ),
                               )
-                            : const Center(
+                            : Center(
                                 child: Text(
                                   '+',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.black54,
+                                    color: isDarkMode ? Colors.white70 : Colors.black54,
                                     fontSize: 32,
                                   ),
                                 ),
@@ -100,64 +111,79 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Name:',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
                             controller: _nameController,
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            decoration: InputDecoration(
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           'Current Email:',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            decoration: InputDecoration(
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           'Password:',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Container(
                           height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextField(
                             controller: _passwordController,
                             obscureText: true,
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            decoration: InputDecoration(
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
                             ),
                           ),
                         ),
@@ -175,10 +201,10 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Save',
                           style: TextStyle(
-                            color: Colors.black54,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
