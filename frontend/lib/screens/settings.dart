@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
 import 'profile.dart';
-import 'budget.dart';
+import '../auth.dart';
+import 'signin.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/budget.dart';
+
+final _authService = AuthService();
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,6 +18,24 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = false;
+  User? _currentUser;
+
+   @override
+  void initState() {
+    super.initState();
+    _getCurrentUser();
+  }
+
+  void _getCurrentUser() {
+    setState(() {
+      _currentUser = _authService.currentUser;
+    });
+  }
+
+  void _signOut() async {
+    await _authService.signOut();
+    _getCurrentUser();
+  }
 
   void _toggleNotifications() {
     setState(() {
@@ -60,6 +83,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40.0),
+                        child: Text(
+                          _currentUser != null
+                              ? 'Signed in as: ${_currentUser!.email ?? _currentUser!.uid}'
+                              : 'Not signed in',
+                          style: const TextStyle(fontSize: 25),
+                        ),
+                      ),
+                      const SizedBox(height:20),
+
                       // Personal Details Section
                       Row(
                         children: [
@@ -221,6 +256,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                       // Auth Buttons, put any other settings above
+                      const SizedBox(height: 50),                    
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 60.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SignInScreen(
+                                      onSignIn: _getCurrentUser, 
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Sign In'),
+                            ),
+                            ElevatedButton(
+                              onPressed: _signOut,
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 205, 140, 135)),
+                              child: const Text('Sign Out'),
+                            ),
+                               ],
                         ),
                       ),
                     ],
