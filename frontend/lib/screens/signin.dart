@@ -16,6 +16,9 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  bool isSignUpMode = false;
   User? _currentUser;
   bool get isEmailUser => _currentUser?.email != null;
 
@@ -88,21 +91,36 @@ class _SignInScreenState extends State<SignInScreen> {
 }
 
 void _signUpWithEmail() async {
-    try {
-      await _authService.signUpWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created successfully!')),
-      );
-      Navigator.pop(context); 
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-up failed: $e')),
+  try {
+    await _authService.signUpWithEmail(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    final user = FirebaseAuth.instance.currentUser;
+    final idToken = await user?.getIdToken();
+
+    if (user != null && idToken != null) {
+      await _authService.userPost(
+        uuid: user.uid,
+        idToken: idToken,
+        email: _emailController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        imgUrl: '',
       );
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Account created successfully!')),
+    );
+    Navigator.pop(context); 
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Sign-up failed: $e')),
+    );
   }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,22 +167,43 @@ void _signUpWithEmail() async {
             ],
             if (_currentUser == null || !isEmailUser) ...[
               TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
               ),
               TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
               ),
+              if (isSignUpMode) ...[
+                TextField(
+                  controller: _firstNameController,
+                  decoration: const InputDecoration(labelText: 'First Name'),
+                ),
+                TextField(
+                  controller: _lastNameController,
+                  decoration: const InputDecoration(labelText: 'Last Name'),
+                ),
+              ],
               const SizedBox(height: 30),
               ElevatedButton(
-              onPressed: _signInWithEmail,
-              child: const Text(
-                'Email Login',
-                style: TextStyle(fontSize: 20),
+                onPressed: isSignUpMode ? _signUpWithEmail : _signInWithEmail,
+                child: Text(
+                  isSignUpMode ? 'Create Account' : 'Email Login',
+                  style: const TextStyle(fontSize: 20),
+                ),
               ),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isSignUpMode = !isSignUpMode;
+                  });
+                },
+                child: Text(
+                  isSignUpMode ? 'Email Login' : 'Sign Up',
+                  style: const TextStyle(fontSize: 20),
+                ),
               ),
             ],
             ElevatedButton(
@@ -179,13 +218,7 @@ void _signUpWithEmail() async {
                 style: TextStyle(fontSize: 20),
               ),
             ),
-             if (_currentUser == null || !isEmailUser) ...[
-            ElevatedButton(
-              onPressed: _signUpWithEmail,
-              child: const Text('Email Sign Up',
-              style: TextStyle(fontSize: 20)),
-            ),
-             ],
+       
             const SizedBox(height: 100),
             const Text(
               'By signing in, you agree to our Terms of Service and Privacy Policy.\nContact support at fluttergroup6@gmail.com',

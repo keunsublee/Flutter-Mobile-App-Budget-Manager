@@ -205,21 +205,30 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
         ],
       )),
-      bottomNavigationBar: Container(
-        height:60,
-        decoration:BoxDecoration(color:isDark?Colors.grey[900]:const Color(0xFFF8F8F8),
-          border:Border(top:BorderSide(color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),width:0.5))),
-        child: Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
-          IconButton(icon:Icon(Icons.home,size:26,color:theme.iconTheme.color),
-            onPressed:()=>Navigator.pushReplacementNamed(context,'/Dashboard'),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height:60,
+          decoration:BoxDecoration(
+            color:isDark?Colors.grey[900]:const Color(0xFFF8F8F8),
+            border:Border(
+              top:BorderSide(
+                color: Color.fromARGB(77, 158, 158, 158),
+                width:0.5
+              )
+            )
           ),
-          IconButton(icon:Icon(Icons.add,size:26,color:theme.iconTheme.color),
-            onPressed:()=>Navigator.pushReplacementNamed(context,'/budget'),
-          ),
-          IconButton(icon:Icon(Icons.settings,size:26,color:theme.iconTheme.color),
-            onPressed:()=>Navigator.pushReplacementNamed(context,'/settings'),
-          ),
-        ]),
+          child: Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
+            IconButton(icon:Icon(Icons.home,size:26,color:theme.iconTheme.color),
+              onPressed:()=>Navigator.pushReplacementNamed(context,'/Dashboard'),
+            ),
+            IconButton(icon:Icon(Icons.add,size:26,color:theme.iconTheme.color),
+              onPressed:()=>Navigator.pushReplacementNamed(context,'/budget'),
+            ),
+            IconButton(icon:Icon(Icons.settings,size:26,color:theme.iconTheme.color),
+              onPressed:()=>Navigator.pushReplacementNamed(context,'/settings'),
+            ),
+          ]),
+        ),
       ),
     );
   }
