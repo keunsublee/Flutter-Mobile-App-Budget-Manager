@@ -44,6 +44,7 @@ dependencies:
   firebase_data_connect: ^0.1.4+1
   image_picker: ^1.0.4
   shared_preferences: ^2.2.0
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:
