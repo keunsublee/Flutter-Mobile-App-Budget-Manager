@@ -68,7 +68,7 @@ class MyApp extends StatelessWidget {
           themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
       // Named routes
-      initialRoute: '/budget',
+      initialRoute: '/Dashboard',
       routes: {
         '/budget': (_) => const BudgetScreen(),
         '/Dashboard': (_) => const DashboardScreen(),
