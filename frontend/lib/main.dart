@@ -69,7 +69,7 @@ class MyApp extends StatelessWidget {
       // Named routes
       initialRoute: '/budget',
       routes: {
-        '/budget': (_) => const BudgetScreen(),
+        '/budget': (_) => const BudgetScreen(email: 'user@example.com'),
         '/settings': (_) => const SettingsScreen(),
         '/profile': (_) => const ProfileSettingScreen(),
       },
