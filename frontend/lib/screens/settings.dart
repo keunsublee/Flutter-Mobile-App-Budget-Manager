@@ -6,6 +6,7 @@ import 'package:group_1_project_2/auth.dart';
 import  'package:group_1_project_2/screens/signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:group_1_project_2/screens/budget.dart';
+import 'package:group_1_project_2/screens/dashboard.dart';
 
 final _authService = AuthService();
 
@@ -313,7 +314,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               IconButton(
                 icon: Icon(Icons.home,
                     size: 26, color: Theme.of(context).iconTheme.color),
-                onPressed: () {}, // leave as-is or wire up later
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DashboardScreen(),
+                    )
+                  );
+                },
               ),
               IconButton(
                 icon: Icon(Icons.add,
