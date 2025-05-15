@@ -318,7 +318,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               IconButton(
                 icon: Icon(Icons.add,
                     size: 26, color: Theme.of(context).iconTheme.color),
-                onPressed: () {}, // leave as-is or wire up later
+                 onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BudgetScreen(),
+                    ),
+                  );
+                },
               ),
               IconButton(
                 icon: Icon(Icons.settings,
