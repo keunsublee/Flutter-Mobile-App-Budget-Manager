@@ -7,12 +7,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 import 'dashboard.dart';
 import 'settings.dart';
+import 'package:http/http.dart' as http; 
+import 'dart:convert';
+
+final String baseUrl = 'https://group-one-backend-1076960172153.us-central1.run.app';
 
 class BudgetItem {
   final String label;
   final double cost;
   final String type;
   BudgetItem(this.label, this.cost, this.type);
+
+Map<String, dynamic> toJson() => {
+        'label': label,
+        'cost': cost,
+        'type': type,
+      };
 }
 
 class BudgetScreen extends StatefulWidget {
@@ -46,7 +56,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   Future<void> _loadForMonth() async {
     final prefs = await SharedPreferences.getInstance();
-
     _selectedMonth = prefs.getInt('selectedMonth_$_userId') ?? _selectedMonth;
 
     final budgetKey = 'monthlyBudget_${_userId}_$_selectedMonth';
@@ -67,14 +76,74 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final prefs = await SharedPreferences.getInstance();
     final budgetKey = 'monthlyBudget_${_userId}_$_selectedMonth';
     final value = double.tryParse(_budgetController.text) ?? 0.0;
-    await prefs.setDouble(budgetKey,value);
+    await prefs.setDouble(budgetKey, value);
+
+    await _syncToBackend();
+  }
+
+  Future<void> _syncToBackend() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not authenticated')),
+        );
+        return;
+      }
+
+      final idToken = await user.getIdToken();
+
+      // Group items by type
+      final itemsByType = {
+        'bills': [],
+        'shopping': [],
+        'food_drink': [],
+        'entertainment': [],
+        'travel': [],
+        'personal': [],
+      };
+      for (var item in _items) {
+        itemsByType[item.type]?.add({
+          'label': item.label,
+          'cost': item.cost,
+        });
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/planning/$_userId'),
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'month': _selectedMonth,
+          'data': itemsByType,
+        }),
+      );
+
+      if (!mounted) return;
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sync planning: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Network error while syncing planning')),
+      );
+    }
   }
 
   Future<void> _saveItems() async {
     final prefs = await SharedPreferences.getInstance();
     final itemsKey = 'items_${_userId}_$_selectedMonth';
-    final encoded = _items.map((i)=> '${i.label}|${i.cost}|${i.type}').toList();
-    await prefs.setStringList(itemsKey,encoded);
+    final encoded = _items.map((i) => '${i.label}|${i.cost}|${i.type}').toList();
+    await prefs.setStringList(itemsKey, encoded);
+
+    // Sync with backend
+    await _syncToBackend();
   }
 
   double get _budget => double.tryParse(_budgetController.text) ?? 0.0;

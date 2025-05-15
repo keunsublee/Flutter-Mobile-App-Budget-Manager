@@ -69,11 +69,32 @@ Future<Response> _userPost(Request request) async {
     try {
       await database.execute(query, parameters: parameters);
       print("User has been added: ${decode['email']}");
-      return Response.ok("User has been added!");
+
+      // --- Add default planning row for new user ---
+      final now = DateTime.now();
+      final month = "${now.year}-${now.month.toString().padLeft(2, '0')}";
+      final planningQuery = Sql.named('''
+        INSERT INTO public.planning (
+          user_id, month, data
+        ) VALUES (
+          @user_id, @month, @data
+        )
+        ON CONFLICT (user_id, month) DO NOTHING
+      ''');
+      final planningParams = {
+        'user_id': uuid,
+        'month': month,
+        'data': jsonEncode({}), // or your default planning data structure
+      };
+      await database.execute(planningQuery, parameters: planningParams);
+      print("Default planning row created for user: $uuid");
+      // ---------------------------------------------
+
+      return Response.ok("User and default planning have been added!");
     } catch (e) {
-      print('Error inserting user: $e');
+      print('Error inserting user or planning: $e');
       return Response.internalServerError(
-        body: 'An error occurred while adding the user.',
+        body: 'An error occurred while adding the user or planning.',
       );
     }
   } else {
