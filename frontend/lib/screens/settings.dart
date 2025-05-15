@@ -8,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:group_1_project_2/screens/budget.dart';
 import 'package:group_1_project_2/screens/dashboard.dart';
 
+
+
 final _authService = AuthService();
 
 class SettingsScreen extends StatefulWidget {
@@ -42,10 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _notificationsEnabled = !_notificationsEnabled;
     });
-  }
-
-  String _formatDate(DateTime date) {
-    return "${date.month}/${date.day}/${date.year}";
   }
 
   @override
@@ -114,32 +112,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 25),
-                      
-                      // Account Creation Date with the actual date in month/day/year format
-                      Padding(
-                        padding: const EdgeInsets.only(left: 40.0),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Account Creation Date: ',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Theme.of(context).textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                            Text(
-                              _currentUser != null && _currentUser!.metadata.creationTime != null
-                                  ? _formatDate(_currentUser!.metadata.creationTime!)
-                                  : _formatDate(DateTime.now()),
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Theme.of(context).textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                       const SizedBox(height: 25),
                       

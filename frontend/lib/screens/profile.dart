@@ -8,31 +8,85 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:group_1_project_2/auth.dart';
 import 'package:group_1_project_2/screens/passwordChange.dart';
 
+
 class ApiService {
   final String baseUrl = 'https://group-one-backend-1076960172153.us-central1.run.app';
   final http.Client _client;
   
   ApiService({http.Client? client}) : _client = client ?? http.Client();
   
+  Future<bool> isServerReachable() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$baseUrl'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+      
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      return false;
+    }
+  }
+  
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     try {
-      print('📱 API: Fetching user data for email: $email');
-      final response = await _client.get(Uri.parse('$baseUrl/user/$email'));
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        return null;
+      }
       
-      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
+      final String uid = currentUser.uid;
+      
+      final response = await _client.get(
+        Uri.parse('$baseUrl/user/$email'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         final List<dynamic> userList = jsonDecode(response.body);
         if (userList.isNotEmpty) {
-          print('📱 API: User found: ${userList[0]}');
           return userList[0];
         }
+      } else if (response.statusCode == 404) {
+        return null;
+      } else {
+        return null;
       }
-      print('📱 API: User not found');
       return null;
     } catch (e) {
-      print('📱 API: Error fetching user data: $e');
       return null;
+    }
+  }
+  
+  Future<bool> createUser(String email, String firstName, String lastName, String? imgUrl) async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        return false;
+      }
+      
+      final String uid = currentUser.uid;
+      
+      final Map<String, dynamic> userData = {
+        'user_id': uid,
+        'email': email,
+        'first_name': firstName,
+        'last_name': lastName,
+        'img_url': imgUrl ?? '',
+      };
+      
+      final response = await _client.post(
+        Uri.parse('$baseUrl/user/$email'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: jsonEncode(userData),
+      ).timeout(const Duration(seconds: 15));
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
     }
   }
   
@@ -49,51 +103,27 @@ class ApiService {
       }
       
       if (data.isEmpty) {
-        print('📱 API: No data to update');
         return false;
       }
       
-      print('📱 API: Updating profile for user $userId with data: $data');
-      
-      final response = await _client.patch(
-        Uri.parse('$baseUrl/user/$userId'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(data),
-      );
-      
-      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
-      
-      if (response.statusCode != 200) {
-        print('📱 API: Failed to update profile: ${response.body}');
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null || currentUser.email == null) {
+        return false;
       }
       
-      return response.statusCode == 200;
-    } catch (e) {
-      print('📱 API: Exception during profile update: $e');
-      return false;
-    }
-  }
-  
-  Future<bool> createUser(String email, String firstName, String lastName, String? imgUrl) async {
-    try {
-      final Map<String, dynamic> userData = {
-        'first_name': firstName,
-        'last_name': lastName,
-        'img_url': imgUrl ?? '',
-      };
+      final String email = currentUser.email!;
       
-      print('📱 API: Creating user with data: $userData');
-      
-      final response = await _client.post(
+      final response = await _client.patch(
         Uri.parse('$baseUrl/user/$email'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(userData),
-      );
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: jsonEncode(data),
+      ).timeout(const Duration(seconds: 20));
       
-      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
       return response.statusCode == 200;
     } catch (e) {
-      print('📱 API: Error creating user: $e');
       return false;
     }
   }
@@ -121,6 +151,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
   
   bool _isSocialSignIn = false;
   String _socialProvider = '';
+  bool _serverAvailable = false;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -171,81 +202,93 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
     });
 
     try {
-      final User? currentUser = _authService.currentUser;
+      final isServerUp = await _apiService.isServerReachable();
+      _serverAvailable = isServerUp;
       
+      if (!isServerUp && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server is not reachable. Working in offline mode.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+
+      final User? currentUser = _authService.currentUser;
+    
       if (currentUser != null) {
         _isSocialSignIn = _checkSocialSignIn(currentUser);
-        print('User signed in with social provider: $_isSocialSignIn');
-        if (_isSocialSignIn) {
-          print('Social provider: $_socialProvider');
-        }
         
         if (mounted) {
           setState(() {
             _emailController.text = currentUser.email ?? '';
-            
+          
             if (currentUser.displayName != null && currentUser.displayName!.isNotEmpty) {
               _nameController.text = currentUser.displayName!;
             }
+            
+            if (currentUser.photoURL != null && currentUser.photoURL!.isNotEmpty) {
+              _imageUrl = currentUser.photoURL;
+            }
+            
+            _userId = currentUser.uid;
           });
         }
-        
-        final userData = await _apiService.getUserByEmail(currentUser.email!);
-        if (userData != null && mounted) {
-          setState(() {
-            _userId = userData['user_id'];
-            print('Loaded user_id from GCP: $_userId');
-            
-            if (_userId != null) {
-              _saveUserId(_userId!);
-            }
-            
-            if (_nameController.text.isEmpty) {
-              final firstName = userData['first_name'] ?? '';
-              final lastName = userData['last_name'] ?? '';
-              _nameController.text = '$firstName $lastName'.trim();
-            }
-            
-            _imageUrl = userData['img_url'];
-            
-            if (userData['created_on'] != null) {
-              _createdOn = DateTime.parse(userData['created_on']);
-            }
-          });
-        } else {
-          print('User not found in GCP database');
-          
-          if (currentUser.email != null) {
-            final nameParts = currentUser.displayName?.split(' ') ?? ['New', 'User'];
-            final firstName = nameParts.first;
-            final lastName = nameParts.length > 1 ? nameParts.last : '';
-            
-            final success = await _apiService.createUser(
-              currentUser.email!,
-              firstName,
-              lastName,
-              currentUser.photoURL,
-            );
-            
-            if (success) {
-              print('Created new user in GCP database');
-              await _loadUserData();
-              return;
-            } else {
-              print('Failed to create user in GCP database');
+      
+        if (currentUser.email != null) {
+          _saveUserEmail(currentUser.email!);
+          await _saveUserId(currentUser.uid);
+        }
+      
+        if (isServerUp && currentUser.email != null) {
+          final userData = await _apiService.getUserByEmail(currentUser.email!);
+          if (userData != null && mounted) {
+            setState(() {
+              _userId = currentUser.uid;
+              
+              if (_nameController.text.isEmpty) {
+                final firstName = userData['first_name'] ?? '';
+                final lastName = userData['last_name'] ?? '';
+                _nameController.text = '$firstName $lastName'.trim();
+              }
+              
+              _imageUrl = userData['img_url'];
+              
+              if (userData['created_on'] != null) {
+                _createdOn = DateTime.parse(userData['created_on']);
+              }
+            });
+          } else {
+            if (currentUser.email != null) {
+              final nameParts = currentUser.displayName?.split(' ') ?? ['New', 'User'];
+              final firstName = nameParts.first;
+              final lastName = nameParts.length > 1 ? nameParts.last : '';
+              
+              final success = await _apiService.createUser(
+                currentUser.email!,
+                firstName,
+                lastName,
+                currentUser.photoURL,
+              );
+              
+              if (success) {
+                await Future.delayed(const Duration(seconds: 1));
+                await _loadUserData();
+                return;
+              } else {
+                setState(() {
+                  _userId = currentUser.uid;
+                });
+              }
             }
           }
         }
-        
-        if (currentUser.email != null) {
-          _saveUserEmail(currentUser.email!);
-        }
       } else {
         final email = await _getUserEmail();
-        
-        if (email != null) {
+      
+        if (email != null && isServerUp) {
           final userData = await _apiService.getUserByEmail(email);
-          
+        
           if (userData != null && mounted) {
             setState(() {
               final firstName = userData['first_name'] ?? '';
@@ -254,11 +297,11 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
               _emailController.text = userData['email'] ?? '';
               _imageUrl = userData['img_url'];
               _userId = userData['user_id'];
-              
+            
               if (userData['created_on'] != null) {
                 _createdOn = DateTime.parse(userData['created_on']);
               }
-              
+            
               if (_userId != null) {
                 _saveUserId(_userId!);
               }
@@ -267,10 +310,12 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         }
       }
     } catch (e) {
-      print('Error loading user data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load profile data')),
+          SnackBar(
+            content: Text('Failed to load profile data: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
@@ -285,9 +330,9 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
   Future<void> _getImage() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 800, // Limit image size to avoid large base64 strings
-      maxHeight: 800,
-      imageQuality: 70, // Compress image to reduce size
+      maxWidth: 500,
+      maxHeight: 500,
+      imageQuality: 50,
     );
 
     if (pickedFile != null && mounted) {
@@ -318,7 +363,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text("OK"),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -327,14 +372,13 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
 
   Future<String?> _convertImageToBase64() async {
     if (_image == null) return null;
-    
+  
     try {
-      // Read the image file as bytes
-      final bytes = await _image!.readAsBytes();
+      final File imageFile = _image!;
       
-      // Check file size before encoding (to avoid very large strings)
-      if (bytes.length > 1024 * 1024) { // If larger than 1MB
-        print('Image too large: ${bytes.length} bytes');
+      final bytes = await imageFile.readAsBytes();
+      
+      if (bytes.length > 500 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Image is too large. Please select a smaller image.')),
@@ -343,25 +387,23 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         return null;
       }
       
-      // Convert to base64
       final base64Image = base64Encode(bytes);
       
-      // Create a data URL
       return 'data:image/jpeg;base64,$base64Image';
     } catch (e) {
-      print('Error converting image to base64: $e');
       return null;
     }
   }
 
   Future<void> _saveProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
+    if (_userId == null) {
       final User? currentUser = _authService.currentUser;
-      if (currentUser == null) {
+      if (currentUser != null) {
+        setState(() {
+          _userId = currentUser.uid;
+        });
+        await _saveUserId(currentUser.uid);
+      } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('User not found. Please log in again.')),
@@ -369,25 +411,37 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         }
         return;
       }
+    }
+  
+    setState(() {
+      _isLoading = true;
+    });
+  
+    try {
+      final isServerUp = await _apiService.isServerReachable();
+      _serverAvailable = isServerUp;
+    
+      final User? currentUser = _authService.currentUser;
+    
+      String? imageUrl;
+      if (_image != null) {
+        imageUrl = await _convertImageToBase64();
       
-      if (_isSocialSignIn) {
-        String? imageUrl;
-        if (_image != null) {
-          // Convert image to base64
-          imageUrl = await _convertImageToBase64();
-          
-          if (imageUrl == null) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to process image')),
-              );
-            }
-            setState(() {
-              _isLoading = false;
-            });
-            return;
+        if (imageUrl == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to process image')),
+            );
           }
-        } else {
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+    
+      if (_isSocialSignIn) {
+        if (imageUrl == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('No changes to save')),
@@ -398,59 +452,51 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
           });
           return;
         }
+      
+        if (isServerUp) {
+          final success = await _apiService.updateUserProfile(
+            _userId!,
+            newImgUrl: imageUrl,
+          );
         
-        String userId;
-        if (_userId == null) {
-          print('User ID not found in state, fetching from GCP');
-          final userData = await _apiService.getUserByEmail(currentUser.email!);
+          if (success) {
+            setState(() {
+              _imageUrl = imageUrl;
+              _image = null;
+            });
           
-          if (userData == null) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('User not found in database. Please contact support.')),
+                const SnackBar(content: Text('Profile image updated successfully!')),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to update profile image on server')),
               );
             }
             setState(() {
-              _isLoading = false;
+              _imageUrl = imageUrl;
+              _image = null;
             });
-            return;
           }
-          
-          userId = userData['user_id'];
-          _userId = userId;
-          await _saveUserId(userId);
         } else {
-          userId = _userId!;
-        }
-        
-        final success = await _apiService.updateUserProfile(
-          userId,
-          newImgUrl: imageUrl,
-        );
-        
-        if (success) {
-          // Update the local state with the new image URL
           setState(() {
             _imageUrl = imageUrl;
-            _image = null; // Clear the selected image
+            _image = null;
           });
-          
+        
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile image updated successfully!')),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to update profile image')),
+              const SnackBar(content: Text('Server is not available. Changes saved locally only.')),
             );
           }
         }
       } else {
         final email = _emailController.text.trim();
         final name = _nameController.text.trim();
-        
+      
         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -462,110 +508,91 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
           });
           return;
         }
-        
-        String? imageUrl;
-        if (_image != null) {
-          // Convert image to base64
-          imageUrl = await _convertImageToBase64();
-          
-          if (imageUrl == null) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to process image')),
-              );
-            }
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-        }
-        
-        String userId;
-        if (_userId == null) {
-          print('User ID not found in state, fetching from GCP');
-          final userData = await _apiService.getUserByEmail(currentUser.email!);
-          
-          if (userData == null) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('User not found in database. Please contact support.')),
-              );
-            }
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-          
-          userId = userData['user_id'];
-          _userId = userId;
-          await _saveUserId(userId);
-        } else {
-          userId = _userId!;
-        }
-        
-        print('Using user ID for update: $userId');
-        
+      
         bool firebaseUpdateSuccess = true;
-        try {
-          await currentUser.updateDisplayName(name);
+        if (currentUser != null) {
+          try {
+            await currentUser.updateDisplayName(name);
           
-          if (email != currentUser.email) {
-            await currentUser.verifyBeforeUpdateEmail(email);
+            if (email != currentUser.email) {
+              await currentUser.verifyBeforeUpdateEmail(email);
             
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Verification email sent. Please check your inbox to complete email update.')),
+                );
+              }
+            }
+          } catch (e) {
+            firebaseUpdateSuccess = false;
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Verification email sent. Please check your inbox to complete email update.')),
+                SnackBar(content: Text('Error updating Firebase profile: ${e.toString()}')),
               );
             }
           }
-        } catch (e) {
-          firebaseUpdateSuccess = false;
-          print('Firebase update error: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error updating Firebase profile: ${e.toString()}')),
-            );
-          }
         }
-        
+      
         if (firebaseUpdateSuccess) {
-          final success = await _apiService.updateUserProfile(
-            userId,
-            newEmail: email != currentUser.email ? email : null,
-            newImgUrl: imageUrl,
-          );
+          if (isServerUp) {
+            final success = await _apiService.updateUserProfile(
+              _userId!,
+              newEmail: email != (currentUser?.email ?? _emailController.text) ? email : null,
+              newImgUrl: imageUrl,
+            );
           
-          if (success) {
-            // Update the local state with the new image URL if it was changed
+            if (success) {
+              if (imageUrl != null) {
+                setState(() {
+                  _imageUrl = imageUrl;
+                  _image = null;
+                });
+              }
+            
+              if (email != (currentUser?.email ?? '')) {
+                await _saveUserEmail(email);
+              }
+            
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile saved successfully!')),
+                );
+              }
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to save profile to server. Your Firebase profile was updated.')),
+                );
+              }
+            
+              if (imageUrl != null) {
+                setState(() {
+                  _imageUrl = imageUrl;
+                  _image = null;
+                });
+              }
+            }
+          } else {
             if (imageUrl != null) {
               setState(() {
                 _imageUrl = imageUrl;
-                _image = null; // Clear the selected image
+                _image = null;
               });
             }
-            
-            if (email != currentUser.email) {
+          
+            if (email != (currentUser?.email ?? '')) {
               await _saveUserEmail(email);
             }
-            
+          
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile saved successfully!')),
-              );
-            }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to save profile to server. Your Firebase profile was updated.')),
+                const SnackBar(content: Text('Server is not available. Changes saved to Firebase and locally only.')),
               );
             }
           }
         }
       }
     } catch (e) {
-      print('Profile save error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred while saving profile: ${e.toString()}')),
@@ -591,14 +618,21 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadUserData,
+            tooltip: 'Refresh profile data',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
           child: _isLoading
-              ? const CircularProgressIndicator()
+              ? const CircularProgressIndicator(color: Colors.white)
               : SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Container(
@@ -623,6 +657,37 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                             ),
                           ),
                           const SizedBox(height: 30),
+                          
+                          if (!_serverAvailable)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withAlpha(50),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.cloud_off,
+                                      color: Colors.orange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Working in offline mode. Some features may be limited.',
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           
                           if (_isSocialSignIn)
                             Padding(
@@ -652,10 +717,10 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                     ),
                                     TextButton(
                                       onPressed: _showSocialSignInInfo,
-                                      child: Text('Info'),
+                                      child: const Text('Info'),
                                       style: TextButton.styleFrom(
                                         padding: EdgeInsets.zero,
-                                        minimumSize: Size(50, 30),
+                                        minimumSize: const Size(50, 30),
                                       ),
                                     ),
                                   ],
@@ -692,7 +757,6 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                                   height: 180,
                                                   fit: BoxFit.cover,
                                                   errorBuilder: (context, error, stackTrace) {
-                                                    print('Error loading base64 image: $error');
                                                     return Center(
                                                       child: Text(
                                                         '+',
@@ -711,7 +775,6 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                                   height: 180,
                                                   fit: BoxFit.cover,
                                                   errorBuilder: (context, error, stackTrace) {
-                                                    print('Error loading network image: $error');
                                                     return Center(
                                                       child: Text(
                                                         '+',
@@ -841,8 +904,8 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                               ),
                               child: Text(
                                 _isSocialSignIn ? 'Save Profile Image' : 'Save',
-                                style: TextStyle(
-                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                                style: const TextStyle(
+                                  color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
