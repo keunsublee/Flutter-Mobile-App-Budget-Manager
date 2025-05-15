@@ -21,7 +21,7 @@ Future<void> userPost({
   required String imgUrl,
 }) async {
   final response = await http.post(
-    Uri.parse('$baseUrl/public.user/$uuid'),
+    Uri.parse('$baseUrl/user/$uuid'),
     headers: {
       'Authorization': 'Bearer $idToken',
       'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ Future<void> userPost({
     final uuid = user.uid;
 
     final response = await http.get(
-      Uri.parse('$baseUrl/public.user/$uuid'),
+      Uri.parse('$baseUrl/user/$uuid'),
       headers: {
         'Authorization': 'Bearer $idToken',
         'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ Future<void> userPatch({
   }
 
   final response = await http.patch(
-    Uri.parse('$baseUrl/public.user/$uuid'),
+    Uri.parse('$baseUrl/user/$uuid'),
     headers: {
       'Authorization': 'Bearer $idToken',
       'Content-Type': 'application/json',
