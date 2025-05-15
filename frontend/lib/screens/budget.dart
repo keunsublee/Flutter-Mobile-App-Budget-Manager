@@ -14,13 +14,20 @@ class BudgetScreen extends StatefulWidget {
   State<BudgetScreen> createState() => _BudgetScreenState();
 }
 
+class BudgetItem {
+  final String label;
+  final double percentage;
+  BudgetItem(this.label, this.percentage);
+}
+
 class _BudgetScreenState extends State<BudgetScreen> {
-  // —— Controllers and in-memory lists
+  // Controllers
   final TextEditingController _budgetController = TextEditingController();
   final TextEditingController _itemController = TextEditingController();
-  List<String> _items = [];
+  final TextEditingController _percentController = TextEditingController();
+  List<BudgetItem> _items = [];
 
-  // —— Category types
+  // Category types
   final List<String> _types = [
     'bills', 'shopping', 'food_drink',
     'entertainment', 'travel', 'personal',
@@ -38,9 +45,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final prefs = await SharedPreferences.getInstance();
     final key = 'monthlyBudget_${widget.email}';
     final saved = prefs.getDouble(key) ?? 0.0;
-    if (saved > 0) {
-      _budgetController.text = saved.toStringAsFixed(2);
-    }
+    if (saved > 0) _budgetController.text = saved.toStringAsFixed(2);
   }
 
   Future<void> _saveBudget() async {
@@ -55,41 +60,54 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final key = 'items_${widget.email}';
     final list = prefs.getStringList(key) ?? [];
     setState(() {
-      _items = list;
+      _items = list.map((e) {
+        final parts = e.split('|');
+        return BudgetItem(parts[0], double.tryParse(parts[1]) ?? 0.0);
+      }).toList();
     });
   }
 
   Future<void> _saveItems() async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'items_${widget.email}';
-    await prefs.setStringList(key, _items);
+    final list = _items.map((i) => '${i.label}|${i.percentage}').toList();
+    await prefs.setStringList(key, list);
   }
 
   void _addItem() {
-    final text = _itemController.text.trim();
-    if (text.isEmpty) return;
+    final label = _itemController.text.trim();
+    final pct = double.tryParse(_percentController.text) ?? 0.0;
+    if (label.isEmpty || pct <= 0) return;
+    // Prevent total percentage > 100%
+    final total = _items.fold(0.0, (sum, item) => sum + item.percentage);
+    if (total + pct > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Total percentage cannot exceed 100%.')),
+      );
+      return;
+    }
     setState(() {
-      _items.insert(0, text);
+      _items.insert(0, BudgetItem(label, pct));
       _itemController.clear();
+      _percentController.clear();
     });
     _saveItems();
   }
 
   void _deleteItem(int index) {
-    setState(() {
-      _items.removeAt(index);
-    });
+    setState(() => _items.removeAt(index));
     _saveItems();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: Column(
         children: [
-          // Purple header
+          // Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 60, bottom: 20, left: 20),
@@ -103,13 +121,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
               ),
             ),
           ),
-
-          // Main content with rounded top corners
           Expanded(
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                color: theme.scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
@@ -120,201 +136,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Monthly Budget Section
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.account_balance_wallet,
-                          size: 28,
-                          color: Theme.of(context).iconTheme.color,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Monthly Budget',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40.0, right: 20.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: TextField(
-                          controller: _budgetController,
-                          keyboardType: TextInputType.number,
-                          onSubmitted: (_) => _saveBudget(),
-                          decoration: const InputDecoration(
-                            hintText: 'Enter amount',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                          ),
-                        ),
-                      ),
+                    _buildSectionTitle(
+                        Icons.account_balance_wallet, 'Monthly Budget'),
+                    _buildTextField(
+                      _budgetController,
+                      'Enter amount',
+                      TextInputType.number,
+                      onSubmitted: (_) => _saveBudget(),
                     ),
                     const SizedBox(height: 30),
-
-                    // Category Section
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.category,
-                          size: 28,
-                          color: Theme.of(context).iconTheme.color,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Category',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 25),
-
-                    // Dropdown for type selection
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40.0, right: 20.0),
-                      child: DropdownButton<String>(
-                        value: _selectedType,
-                        isExpanded: true,
-                        underline: Container(
-                          height: 1,
-                          color: Colors.grey.withOpacity(0.5),
-                        ),
-                        items: _types
-                            .map((t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(
-                                    t,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge,
-                                  ),
-                                ))
-                            .toList(),
-                        onChanged: (newT) {
-                          if (newT != null) {
-                            setState(() => _selectedType = newT);
-                          }
-                        },
-                      ),
-                    ),
+                    _buildSectionTitle(Icons.category, 'Category'),
+                    _buildDropdown(theme),
                     const SizedBox(height: 40),
-
-                    // Input + Add button
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40.0, right: 20.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: TextField(
-                                controller: _itemController,
-                                decoration: InputDecoration(
-                                  labelText: 'Add item',
-                                  labelStyle: TextStyle(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.color,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: _addItem,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF673AB7),
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text('Add'),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildAddRow(theme),
                     const SizedBox(height: 40),
-
-                    // Items Section
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.list,
-                          size: 28,
-                          color: Theme.of(context).iconTheme.color,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Items',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.color,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildSectionTitle(Icons.list, 'Items'),
                     const SizedBox(height: 25),
-
-                    // Items list with delete
-                    Padding(
-                      padding: const EdgeInsets.only(left: 40.0, right: 20.0),
-                      child: Column(
-                        children: _items.asMap().entries.map((entry) {
-                          final idx = entry.key;
-                          final item = entry.value;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  item,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  onPressed: () => _deleteItem(idx),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    ..._items.asMap().entries.map(
+                      (e) => _buildItemRow(e.key, e.value, theme),
                     ),
                   ],
                 ),
@@ -323,17 +162,172 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
         ],
       ),
+      bottomNavigationBar:
+          _buildBottomBar(isDarkMode, context),
+    );
+  }
 
-      // Bottom navigation bar
-      bottomNavigationBar: Container(
+  Widget _buildSectionTitle(IconData icon, String text) => Row(
+        children: [
+          Icon(icon, size: 28, color: Theme.of(context).iconTheme.color),
+          const SizedBox(width: 12),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color:
+                  Theme.of(context).textTheme.bodyLarge?.color,
+            ),
+          ),
+        ],
+      );
+
+  Widget _buildTextField(
+    TextEditingController ctrl,
+    String hint,
+    TextInputType type, {
+    Function(String)? onSubmitted,
+  }) => Padding(
+        padding: const EdgeInsets.only(left: 40, right: 20, top: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextField(
+            controller: ctrl,
+            keyboardType: type,
+            onSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              hintText: hint,
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ),
+      );
+
+  Widget _buildDropdown(ThemeData theme) => Padding(
+        padding: const EdgeInsets.only(left: 40, right: 20),
+        child: DropdownButton<String>(
+          value: _selectedType,
+          isExpanded: true,
+          underline: Container(
+            height: 1,
+            color: Colors.grey.withOpacity(0.5),
+          ),
+          items: _types
+              .map(
+                (t) => DropdownMenuItem(
+                  value: t,
+                  child: Text(
+                    t,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (newT) {
+            if (newT != null) setState(() => _selectedType = newT);
+          },
+        ),
+      );
+
+  Widget _buildAddRow(ThemeData theme) => Padding(
+        padding: const EdgeInsets.only(left: 40, right: 20),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // White background for item label input
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextField(
+                      controller: _itemController,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Item label',
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Percentage input remains styled as cardColor
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextField(
+                      controller: _percentController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '% of budget',
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: _addItem,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF673AB7),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildItemRow(int idx, BudgetItem item, ThemeData theme) {
+    final budget = double.tryParse(_budgetController.text) ?? 0.0;
+    final amount = budget * item.percentage / 100;
+    return Padding(
+      padding: const EdgeInsets.only(left: 40, right: 20, bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              '${item.label} – ${item.percentage.toStringAsFixed(1)}% (\$${amount.toStringAsFixed(2)})',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: () => _deleteItem(idx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(bool isDarkMode, BuildContext context) => Container(
         height: 60,
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? Colors.grey[900]
-              : const Color(0xFFF8F8F8),
+          color:
+              isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
           border: Border(
             top: BorderSide(
-              color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
+              color: Colors.grey.withValues(
+                  alpha: 77, red: 158, green: 158, blue: 158),
               width: 0.5,
             ),
           ),
@@ -374,7 +368,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
 }
+
