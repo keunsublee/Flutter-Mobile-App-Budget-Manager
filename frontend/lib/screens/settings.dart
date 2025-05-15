@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme.dart';
-import 'profile.dart';
-import '../auth.dart';
-import 'signin.dart';
+import 'package:group_1_project_2/theme.dart';
+import  'package:group_1_project_2/screens/profile.dart';
+import 'package:group_1_project_2/auth.dart';
+import  'package:group_1_project_2/screens/signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'screens/budget.dart';
+import 'package:group_1_project_2/screens/budget.dart';
 
 final _authService = AuthService();
 
@@ -294,44 +294,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        height: 60, 
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark 
-              ? Colors.grey[900] 
-              : const Color(0xFFF8F8F8),
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
-              width: 0.5,
+       
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
+            border: Border(
+              top: BorderSide(
+                color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
+                width: 0.5,
+              ),
             ),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: Icon(Icons.home, size: 26, color: Theme.of(context).iconTheme.color),
-              onPressed: () {
-                // Navigate to home
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color),
-              onPressed: () {
-                Navigator.pushReplacementNamed(context, '/budget');
-              },
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.settings, 
-                size: 26, 
-                color: Theme.of(context).iconTheme.color,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(Icons.home,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {}, // leave as-is or wire up later
               ),
-              onPressed: () {
-              },
-            ),
-          ],
+              IconButton(
+                icon: Icon(Icons.add,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {}, // leave as-is or wire up later
+              ),
+              IconButton(
+                icon: Icon(Icons.settings,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

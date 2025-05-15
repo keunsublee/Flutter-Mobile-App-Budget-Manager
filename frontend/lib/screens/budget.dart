@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme.dart';  // for ThemeProvider
-import 'settings.dart';
+import 'package:group_1_project_2/theme.dart';
+import 'package:group_1_project_2/screens/settings.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -225,41 +225,45 @@ class _BudgetScreenState extends State<BudgetScreen> {
       ),
 
       // Bottom navigation bar
-      bottomNavigationBar: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
-          border: Border(
-            top: BorderSide(color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158)
-              , width: 0.5),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
+            border: Border(
+              top: BorderSide(
+                color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
+                width: 0.5,
+              ),
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: Icon(Icons.home,
-                  size: 26, color: Theme.of(context).iconTheme.color),
-              onPressed: () {}, // leave as-is or wire up later
-            ),
-            IconButton(
-              icon: Icon(Icons.add,
-                  size: 26, color: Theme.of(context).iconTheme.color),
-              onPressed: () {}, // leave as-is or wire up later
-            ),
-            IconButton(
-              icon: Icon(Icons.settings,
-                  size: 26, color: Theme.of(context).iconTheme.color),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(Icons.home,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {}, // leave as-is or wire up later
+              ),
+              IconButton(
+                icon: Icon(Icons.add,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {}, // leave as-is or wire up later
+              ),
+              IconButton(
+                icon: Icon(Icons.settings,
+                    size: 26, color: Theme.of(context).iconTheme.color),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

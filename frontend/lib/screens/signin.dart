@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../auth.dart';
+import 'package:group_1_project_2/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 final _authService = AuthService();

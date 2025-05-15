@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; 
-import 'screens/budget.dart';
-import 'screens/settings.dart';
-import 'screens/profile.dart';
-import 'theme.dart';
+import 'package:group_1_project_2/screens/budget.dart';
+import 'package:group_1_project_2/screens/settings.dart';
+import 'package:group_1_project_2/screens/profile.dart';
+import 'package:group_1_project_2/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
