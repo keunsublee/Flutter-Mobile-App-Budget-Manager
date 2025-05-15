@@ -1,13 +1,26 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
+
+Future<void> signInWithGitHub() async {
+  try {
+    // Trigger the GitHub sign-in flow
+    final UserCredential userCredential = await _auth.signInWithProvider(GithubAuthProvider());
+
+    // The user is now signed in
+    print('GitHub Sign-in successful: ${userCredential.user}');
+  } on FirebaseAuthException catch (e) {
+    throw Exception('GitHub Sign-in failed: ${e.message}');
+  }
+}
+
 
   Future<void> signInAnonymously() async {
     try {

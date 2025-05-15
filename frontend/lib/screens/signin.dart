@@ -17,6 +17,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   User? _currentUser;
+  bool get isEmailUser => _currentUser?.email != null;
 
   @override
   void initState() {
@@ -47,7 +48,8 @@ class _SignInScreenState extends State<SignInScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signed in successfully!')),
       );
-      Navigator.pop(context); 
+      widget.onSignIn();
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Sign-in failed: $e')),
@@ -69,6 +71,21 @@ class _SignInScreenState extends State<SignInScreen> {
       );
     }
   }
+
+  void _signInWithGitHub() async {
+  try {
+    await _authService.signInWithGitHub();
+    _getCurrentUser();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed in with GitHub successfully!')),
+    );
+    Navigator.pop(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('GitHub Sign-in failed: $e')),
+    );
+  }
+}
 
 void _signUpWithEmail() async {
     try {
@@ -103,6 +120,24 @@ void _signUpWithEmail() async {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
+            if (isEmailUser)
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await FirebaseAuth.instance.sendPasswordResetEmail(
+                      email: _currentUser!.email!,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password reset email sent!')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                },
+                child: const Text('Reset Password'),
+              ),
               ElevatedButton(
                 onPressed: _signOut,
                 style: ElevatedButton.styleFrom(
@@ -112,35 +147,45 @@ void _signUpWithEmail() async {
               ),
               const Divider(height: 30, thickness: 1),
             ],
-            TextField(
+            if (_currentUser == null || !isEmailUser) ...[
+              TextField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
               keyboardType: TextInputType.emailAddress,
-            ),
-            TextField(
+              ),
+              TextField(
               controller: _passwordController,
               decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
               onPressed: _signInWithEmail,
               child: const Text(
-              'Email Login',
-              style: TextStyle(fontSize: 20), 
+                'Email Login',
+                style: TextStyle(fontSize: 20),
               ),
-            ),
+              ),
+            ],
             ElevatedButton(
               onPressed: _signInWithGoogle,
               child: const Text('Google Login',
               style: TextStyle(fontSize: 20)),
             ),
             ElevatedButton(
+              onPressed: _signInWithGitHub,
+              child: const Text(
+                'GitHub Login',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+             if (_currentUser == null || !isEmailUser) ...[
+            ElevatedButton(
               onPressed: _signUpWithEmail,
               child: const Text('Email Sign Up',
               style: TextStyle(fontSize: 20)),
             ),
-
+             ],
             const SizedBox(height: 100),
             const Text(
               'By signing in, you agree to our Terms of Service and Privacy Policy.\nContact support at fluttergroup6@gmail.com',
