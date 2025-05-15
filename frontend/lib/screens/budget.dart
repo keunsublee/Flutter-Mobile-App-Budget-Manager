@@ -265,13 +265,15 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildBottomBar(bool isDarkMode, BuildContext context) => Container(
-    height: 60,
-    decoration: BoxDecoration(color: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8), border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158), width: 0.5))),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-      IconButton(icon: Icon(Icons.home, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()))),
-      IconButton(icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () {}),
-      IconButton(icon: Icon(Icons.settings, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
-    ]),
+  Widget _buildBottomBar(bool isDarkMode, BuildContext context) => SafeArea(
+    child: Container(
+      height: 60,
+      decoration: BoxDecoration(color: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8), border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.5), width: 0.5))),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+        IconButton(icon: Icon(Icons.home, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()))),
+        IconButton(icon: Icon(Icons.add, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () {}),
+        IconButton(icon: Icon(Icons.settings, size: 26, color: Theme.of(context).iconTheme.color), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+      ]),
+    ),
   );
 }
