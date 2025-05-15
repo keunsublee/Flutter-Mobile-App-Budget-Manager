@@ -105,62 +105,64 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: Column(
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(top: 60, bottom: 20, left: 20),
-            color: const Color(0xFF673AB7),
-            child: const Text(
-              'Budgeting',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionTitle(
-                        Icons.account_balance_wallet, 'Monthly Budget'),
-                    _buildTextField(
-                      _budgetController,
-                      'Enter amount',
-                      TextInputType.number,
-                      onSubmitted: (_) => _saveBudget(),
-                    ),
-                    const SizedBox(height: 30),
-                    _buildSectionTitle(Icons.category, 'Category'),
-                    _buildDropdown(theme),
-                    const SizedBox(height: 40),
-                    _buildAddRow(theme),
-                    const SizedBox(height: 40),
-                    _buildSectionTitle(Icons.list, 'Items'),
-                    const SizedBox(height: 25),
-                    ..._items.asMap().entries.map(
-                      (e) => _buildItemRow(e.key, e.value, theme),
-                    ),
-                  ],
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              color: const Color(0xFF673AB7),
+              child: const Text(
+                'Budgeting',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle(
+                          Icons.account_balance_wallet, 'Monthly Budget'),
+                      _buildTextField(
+                        _budgetController,
+                        'Enter amount',
+                        TextInputType.number,
+                        onSubmitted: (_) => _saveBudget(),
+                      ),
+                      const SizedBox(height: 30),
+                      _buildSectionTitle(Icons.category, 'Category'),
+                      _buildDropdown(theme),
+                      const SizedBox(height: 40),
+                      _buildAddRow(theme),
+                      const SizedBox(height: 40),
+                      _buildSectionTitle(Icons.list, 'Items'),
+                      const SizedBox(height: 25),
+                      ..._items.asMap().entries.map(
+                        (e) => _buildItemRow(e.key, e.value, theme),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar:
           _buildBottomBar(isDarkMode, context),
@@ -216,7 +218,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           isExpanded: true,
           underline: Container(
             height: 1,
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 77, red: 158, green: 158, blue: 158),
           ),
           items: _types
               .map(
@@ -243,10 +245,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // White background for item label input
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color.fromARGB(255, 103, 155, 238),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: TextField(
@@ -260,7 +261,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Percentage input remains styled as cardColor
                   Container(
                     decoration: BoxDecoration(
                       color: theme.cardColor,
@@ -320,54 +320,54 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildBottomBar(bool isDarkMode, BuildContext context) => Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color:
-              isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey.withValues(
-                  alpha: 77, red: 158, green: 158, blue: 158),
-              width: 0.5,
-            ),
+    height: 60,
+    decoration: BoxDecoration(
+      color:
+          isDarkMode ? Colors.grey[900] : const Color(0xFFF8F8F8),
+      border: Border(
+        top: BorderSide(
+          color: Colors.grey.withValues(
+              alpha: 77, red: 158, green: 158, blue: 158),
+          width: 0.5,
+        ),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        IconButton(
+          icon: Icon(
+            Icons.home,
+            size: 26,
+            color: Theme.of(context).iconTheme.color,
           ),
+          onPressed: () {},
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.home,
-                size: 26,
-                color: Theme.of(context).iconTheme.color,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.add,
-                size: 26,
-                color: Theme.of(context).iconTheme.color,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.settings,
-                size: 26,
-                color: Theme.of(context).iconTheme.color,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                );
-              },
-            ),
-          ],
+        IconButton(
+          icon: Icon(
+            Icons.add,
+            size: 26,
+            color: Theme.of(context).iconTheme.color,
+          ),
+          onPressed: () {},
         ),
-      );
+        IconButton(
+          icon: Icon(
+            Icons.settings,
+            size: 26,
+            color: Theme.of(context).iconTheme.color,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
+          },
+        ),
+      ],
+    ),
+  );
 }
 
