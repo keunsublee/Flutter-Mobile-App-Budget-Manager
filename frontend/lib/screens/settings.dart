@@ -43,7 +43,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // Helper method to format date as month/day/year
   String _formatDate(DateTime date) {
     return "${date.month}/${date.day}/${date.year}";
   }
@@ -93,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         padding: const EdgeInsets.only(left: 40.0),
                         child: Text(
                           _currentUser != null
-                              ? 'Signed in as: ${_currentUser!.email ?? _currentUser!.uid}'
+                              ? 'Signed in as: ${_currentUser!.displayName ?? _currentUser!.uid}'
                               : 'Not signed in',
                           style: const TextStyle(fontSize: 25),
                         ),

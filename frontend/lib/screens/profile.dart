@@ -6,80 +6,37 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:group_1_project_2/auth.dart';
+import 'package:group_1_project_2/screens/passwordChange.dart';
 
-class ProfileSettingScreen extends StatefulWidget {
-  const ProfileSettingScreen({super.key});
-
-  @override
-  State<ProfileSettingScreen> createState() => _ProfileSettingScreenState();
-}
-
-class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
-  // API URL - your actual API URL
+class ApiService {
   final String baseUrl = 'https://group-one-backend-1076960172153.us-central1.run.app';
+  final http.Client _client;
   
-  // Use your existing auth service
-  final _authService = AuthService();
+  ApiService({http.Client? client}) : _client = client ?? http.Client();
   
-  File? _image;
-  String? _imageUrl;
-  final _picker = ImagePicker();
-  bool _isLoading = true;
-  String? _userId;
-
-  // Controllers for form fields
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  // Get user email from shared preferences
-  Future<String?> _getUserEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_email');
-  }
-
-  // Save user email to shared preferences
-  Future<void> _saveUserEmail(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_email', email);
-  }
-
-  // Get user ID from shared preferences
-  Future<String?> _getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id');
-  }
-
-  // Save user ID to shared preferences
-  Future<void> _saveUserId(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_id', userId);
-  }
-
-  // Get user data from the server
-  Future<Map<String, dynamic>?> _getUserByEmail(String email) async {
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/user/$email'));
+      print('📱 API: Fetching user data for email: $email');
+      final response = await _client.get(Uri.parse('$baseUrl/user/$email'));
+      
+      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
       
       if (response.statusCode == 200) {
         final List<dynamic> userList = jsonDecode(response.body);
         if (userList.isNotEmpty) {
+          print('📱 API: User found: ${userList[0]}');
           return userList[0];
         }
       }
+      print('📱 API: User not found');
       return null;
     } catch (e) {
+      print('📱 API: Error fetching user data: $e');
       return null;
     }
   }
-
-  // Update user profile on the server
-  Future<bool> _updateUserProfile(String userId, String? newEmail, String? newImg) async {
+  
+  Future<bool> updateUserProfile(String userId, {String? newEmail, String? newImgUrl}) async {
     try {
       final Map<String, dynamic> data = {};
       
@@ -87,20 +44,125 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         data['new_email'] = newEmail;
       }
       
-      if (newImg != null) {
-        data['new_img'] = newImg;
+      if (newImgUrl != null) {
+        data['new_img'] = newImgUrl;
       }
       
-      final response = await http.patch(
+      if (data.isEmpty) {
+        print('📱 API: No data to update');
+        return false;
+      }
+      
+      print('📱 API: Updating profile for user $userId with data: $data');
+      
+      final response = await _client.patch(
         Uri.parse('$baseUrl/user/$userId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
       );
       
+      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
+      
+      if (response.statusCode != 200) {
+        print('📱 API: Failed to update profile: ${response.body}');
+      }
+      
       return response.statusCode == 200;
     } catch (e) {
+      print('📱 API: Exception during profile update: $e');
       return false;
     }
+  }
+  
+  Future<bool> createUser(String email, String firstName, String lastName, String? imgUrl) async {
+    try {
+      final Map<String, dynamic> userData = {
+        'first_name': firstName,
+        'last_name': lastName,
+        'img_url': imgUrl ?? '',
+      };
+      
+      print('📱 API: Creating user with data: $userData');
+      
+      final response = await _client.post(
+        Uri.parse('$baseUrl/user/$email'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(userData),
+      );
+      
+      print('📱 API: Server response: ${response.statusCode} - ${response.body}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('📱 API: Error creating user: $e');
+      return false;
+    }
+  }
+}
+
+class ProfileSettingScreen extends StatefulWidget {
+  final ApiService? apiService;
+  
+  const ProfileSettingScreen({super.key, this.apiService});
+
+  @override
+  State<ProfileSettingScreen> createState() => _ProfileSettingScreenState();
+}
+
+class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
+  late final ApiService _apiService;
+  final _authService = AuthService();
+
+  File? _image;
+  String? _imageUrl;
+  final _picker = ImagePicker();
+  bool _isLoading = true;
+  String? _userId;
+  DateTime? _createdOn;
+  
+  bool _isSocialSignIn = false;
+  String _socialProvider = '';
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _apiService = widget.apiService ?? ApiService();
+    _loadUserData();
+  }
+
+  Future<String?> _getUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_email');
+  }
+
+  Future<void> _saveUserEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_email', email);
+  }
+
+  Future<void> _saveUserId(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', userId);
+  }
+
+  bool _checkSocialSignIn(User user) {
+    final providerData = user.providerData;
+    if (providerData.isEmpty) return false;
+    
+    for (final provider in providerData) {
+      final providerId = provider.providerId;
+      if (providerId == 'google.com') {
+        _socialProvider = 'Google';
+        return true;
+      } else if (providerId == 'github.com') {
+        _socialProvider = 'GitHub';
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   Future<void> _loadUserData() async {
@@ -109,51 +171,83 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
     });
 
     try {
-      // Get current Firebase user from your auth service
       final User? currentUser = _authService.currentUser;
       
       if (currentUser != null) {
-        // Use Firebase user data
+        _isSocialSignIn = _checkSocialSignIn(currentUser);
+        print('User signed in with social provider: $_isSocialSignIn');
+        if (_isSocialSignIn) {
+          print('Social provider: $_socialProvider');
+        }
+        
         if (mounted) {
           setState(() {
             _emailController.text = currentUser.email ?? '';
-            _userId = currentUser.uid;
             
-            // Try to get display name, or fetch from backend if not available
             if (currentUser.displayName != null && currentUser.displayName!.isNotEmpty) {
               _nameController.text = currentUser.displayName!;
-            } else {
-              // Fetch additional user data from your backend
-              _getUserByEmail(currentUser.email!).then((userData) {
-                if (userData != null && mounted) {
-                  setState(() {
-                    final firstName = userData['first_name'] ?? '';
-                    final lastName = userData['last_name'] ?? '';
-                    _nameController.text = '$firstName $lastName'.trim();
-                    _imageUrl = userData['img_url'];
-                  });
-                }
-              });
-            }
-            
-            // Save the user ID for future use
-            _saveUserId(currentUser.uid);
-            if (currentUser.email != null) {
-              _saveUserEmail(currentUser.email!);
             }
           });
         }
+        
+        final userData = await _apiService.getUserByEmail(currentUser.email!);
+        if (userData != null && mounted) {
+          setState(() {
+            _userId = userData['user_id'];
+            print('Loaded user_id from GCP: $_userId');
+            
+            if (_userId != null) {
+              _saveUserId(_userId!);
+            }
+            
+            if (_nameController.text.isEmpty) {
+              final firstName = userData['first_name'] ?? '';
+              final lastName = userData['last_name'] ?? '';
+              _nameController.text = '$firstName $lastName'.trim();
+            }
+            
+            _imageUrl = userData['img_url'];
+            
+            if (userData['created_on'] != null) {
+              _createdOn = DateTime.parse(userData['created_on']);
+            }
+          });
+        } else {
+          print('User not found in GCP database');
+          
+          if (currentUser.email != null) {
+            final nameParts = currentUser.displayName?.split(' ') ?? ['New', 'User'];
+            final firstName = nameParts.first;
+            final lastName = nameParts.length > 1 ? nameParts.last : '';
+            
+            final success = await _apiService.createUser(
+              currentUser.email!,
+              firstName,
+              lastName,
+              currentUser.photoURL,
+            );
+            
+            if (success) {
+              print('Created new user in GCP database');
+              await _loadUserData();
+              return;
+            } else {
+              print('Failed to create user in GCP database');
+            }
+          }
+        }
+        
+        if (currentUser.email != null) {
+          _saveUserEmail(currentUser.email!);
+        }
       } else {
-        // Original code for fetching user data from your backend
         final email = await _getUserEmail();
         
         if (email != null) {
-          // Fetch user data from the server
-          final userData = await _getUserByEmail(email);
+          final userData = await _apiService.getUserByEmail(email);
           
           if (userData != null && mounted) {
             setState(() {
-              // Split the name into first and last name
               final firstName = userData['first_name'] ?? '';
               final lastName = userData['last_name'] ?? '';
               _nameController.text = '$firstName $lastName'.trim();
@@ -161,7 +255,10 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
               _imageUrl = userData['img_url'];
               _userId = userData['user_id'];
               
-              // Save the user ID for future use
+              if (userData['created_on'] != null) {
+                _createdOn = DateTime.parse(userData['created_on']);
+              }
+              
               if (_userId != null) {
                 _saveUserId(_userId!);
               }
@@ -170,7 +267,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
         }
       }
     } catch (e) {
-      // Show error message to user
+      print('Error loading user data: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to load profile data')),
@@ -186,7 +283,12 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
   }
 
   Future<void> _getImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800, // Limit image size to avoid large base64 strings
+      maxHeight: 800,
+      imageQuality: 70, // Compress image to reduce size
+    );
 
     if (pickedFile != null && mounted) {
       setState(() {
@@ -195,7 +297,6 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
     }
   }
 
-  // Navigate to change password screen
   void _navigateToChangePassword() {
     Navigator.push(
       context,
@@ -204,58 +305,215 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
       ),
     );
   }
+  
+  void _showSocialSignInInfo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("$_socialProvider Sign-In"),
+        content: Text(
+          "You're signed in with $_socialProvider. Your name, email, and password are managed by $_socialProvider and cannot be changed here.\n\n"
+          "To change these details, please visit your $_socialProvider account settings."
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _convertImageToBase64() async {
+    if (_image == null) return null;
+    
+    try {
+      // Read the image file as bytes
+      final bytes = await _image!.readAsBytes();
+      
+      // Check file size before encoding (to avoid very large strings)
+      if (bytes.length > 1024 * 1024) { // If larger than 1MB
+        print('Image too large: ${bytes.length} bytes');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image is too large. Please select a smaller image.')),
+          );
+        }
+        return null;
+      }
+      
+      // Convert to base64
+      final base64Image = base64Encode(bytes);
+      
+      // Create a data URL
+      return 'data:image/jpeg;base64,$base64Image';
+    } catch (e) {
+      print('Error converting image to base64: $e');
+      return null;
+    }
+  }
 
   Future<void> _saveProfile() async {
-    // Show loading indicator
     setState(() {
       _isLoading = true;
     });
     
     try {
-      // Regular profile update
-      String userId;
-      
-      // Try to get user ID from Firebase first
       final User? currentUser = _authService.currentUser;
-      if (currentUser != null) {
-        userId = currentUser.uid;
-      } else {
-        userId = _userId ?? await _getUserId() ?? '';
-      }
-      
-      if (userId.isEmpty) {
+      if (currentUser == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User ID not found. Please log in again.')),
+            const SnackBar(content: Text('User not found. Please log in again.')),
           );
         }
         return;
       }
       
-      // Get the values from the form
-      final email = _emailController.text.trim();
-      final name = _nameController.text.trim();
-      
-      String? imageUrl;
-      if (_image != null) {
-        // In a real implementation, you would upload the image to storage
-        // and get the URL back
-        imageUrl = 'https://example.com/placeholder.jpg';
-      }
-      
-      // Update Firebase user profile if available
-      final User? user = _authService.currentUser;
-      if (user != null) {
-        try {
-          // Update display name
-          await user.updateDisplayName(name);
+      if (_isSocialSignIn) {
+        String? imageUrl;
+        if (_image != null) {
+          // Convert image to base64
+          imageUrl = await _convertImageToBase64();
           
-          // Update email if it changed
-          if (email != user.email) {
-            // Use verifyBeforeUpdateEmail instead of updateEmail
-            await user.verifyBeforeUpdateEmail(email);
+          if (imageUrl == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to process image')),
+              );
+            }
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No changes to save')),
+            );
+          }
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+        
+        String userId;
+        if (_userId == null) {
+          print('User ID not found in state, fetching from GCP');
+          final userData = await _apiService.getUserByEmail(currentUser.email!);
+          
+          if (userData == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('User not found in database. Please contact support.')),
+              );
+            }
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+          
+          userId = userData['user_id'];
+          _userId = userId;
+          await _saveUserId(userId);
+        } else {
+          userId = _userId!;
+        }
+        
+        final success = await _apiService.updateUserProfile(
+          userId,
+          newImgUrl: imageUrl,
+        );
+        
+        if (success) {
+          // Update the local state with the new image URL
+          setState(() {
+            _imageUrl = imageUrl;
+            _image = null; // Clear the selected image
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile image updated successfully!')),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to update profile image')),
+            );
+          }
+        }
+      } else {
+        final email = _emailController.text.trim();
+        final name = _nameController.text.trim();
+        
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please enter a valid email address')),
+            );
+          }
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+        
+        String? imageUrl;
+        if (_image != null) {
+          // Convert image to base64
+          imageUrl = await _convertImageToBase64();
+          
+          if (imageUrl == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to process image')),
+              );
+            }
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+        
+        String userId;
+        if (_userId == null) {
+          print('User ID not found in state, fetching from GCP');
+          final userData = await _apiService.getUserByEmail(currentUser.email!);
+          
+          if (userData == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('User not found in database. Please contact support.')),
+              );
+            }
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+          
+          userId = userData['user_id'];
+          _userId = userId;
+          await _saveUserId(userId);
+        } else {
+          userId = _userId!;
+        }
+        
+        print('Using user ID for update: $userId');
+        
+        bool firebaseUpdateSuccess = true;
+        try {
+          await currentUser.updateDisplayName(name);
+          
+          if (email != currentUser.email) {
+            await currentUser.verifyBeforeUpdateEmail(email);
             
-            // Show a message to the user that they need to verify their email
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Verification email sent. Please check your inbox to complete email update.')),
@@ -263,45 +521,57 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
             }
           }
         } catch (e) {
+          firebaseUpdateSuccess = false;
+          print('Firebase update error: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error updating Firebase profile: ${e.toString()}')),
             );
           }
-          return;
-        }
-      }
-      
-      // Update profile in your backend
-      final success = await _updateUserProfile(userId, email, imageUrl);
-      
-      if (success) {
-        // Update the stored email if it changed
-        final currentEmail = await _getUserEmail();
-        if (email != currentEmail) {
-          await _saveUserEmail(email);
         }
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile saved successfully!')),
+        if (firebaseUpdateSuccess) {
+          final success = await _apiService.updateUserProfile(
+            userId,
+            newEmail: email != currentUser.email ? email : null,
+            newImgUrl: imageUrl,
           );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to save profile')),
-          );
+          
+          if (success) {
+            // Update the local state with the new image URL if it was changed
+            if (imageUrl != null) {
+              setState(() {
+                _imageUrl = imageUrl;
+                _image = null; // Clear the selected image
+              });
+            }
+            
+            if (email != currentUser.email) {
+              await _saveUserEmail(email);
+            }
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile saved successfully!')),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to save profile to server. Your Firebase profile was updated.')),
+              );
+            }
+          }
         }
       }
     } catch (e) {
+      print('Profile save error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred while saving profile: ${e.toString()}')),
         );
       }
     } finally {
-      // Hide loading indicator
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -309,7 +579,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
       }
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -354,7 +624,45 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                           ),
                           const SizedBox(height: 30),
                           
-                          // Profile image
+                          if (_isSocialSignIn)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withAlpha(50),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      color: Colors.blue,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Signed in with $_socialProvider',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _showSocialSignInInfo,
+                                      child: Text('Info'),
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: Size(50, 30),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          
                           GestureDetector(
                             onTap: _getImage,
                             child: Container(
@@ -374,27 +682,48 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                         fit: BoxFit.cover,
                                       ),
                                     )
-                                  : _imageUrl != null
+                                  : _imageUrl != null && _imageUrl!.isNotEmpty
                                       ? ClipRRect(
                                           borderRadius: BorderRadius.circular(90),
-                                          child: Image.network(
-                                            _imageUrl!,
-                                            width: 180,
-                                            height: 180,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
-                                              return Center(
-                                                child: Text(
-                                                  '+',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                                                    fontSize: 32,
-                                                  ),
+                                          child: _imageUrl!.startsWith('data:image/')
+                                              ? Image.memory(
+                                                  base64Decode(_imageUrl!.split(',')[1]),
+                                                  width: 180,
+                                                  height: 180,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    print('Error loading base64 image: $error');
+                                                    return Center(
+                                                      child: Text(
+                                                        '+',
+                                                        textAlign: TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                                                          fontSize: 32,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                )
+                                              : Image.network(
+                                                  _imageUrl!,
+                                                  width: 180,
+                                                  height: 180,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    print('Error loading network image: $error');
+                                                    return Center(
+                                                      child: Text(
+                                                        '+',
+                                                        textAlign: TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                                                          fontSize: 32,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
-                                              );
-                                            },
-                                          ),
                                         )
                                       : Center(
                                           child: Text(
@@ -410,16 +739,28 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                           ),
                           const SizedBox(height: 40),
                           
-                          // Profile edit form
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Name:',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkMode ? Colors.white : Colors.black,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Name:',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  if (_isSocialSignIn)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Icon(
+                                        Icons.lock,
+                                        size: 16,
+                                        color: isDarkMode ? Colors.white54 : Colors.black38,
+                                      ),
+                                    ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               Container(
@@ -437,15 +778,30 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                     hintText: 'Enter your name',
                                     hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
                                   ),
+                                  readOnly: _isSocialSignIn,
+                                  enabled: !_isSocialSignIn,
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              Text(
-                                'Email:',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkMode ? Colors.white : Colors.black,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Email:',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  if (_isSocialSignIn)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Icon(
+                                        Icons.lock,
+                                        size: 16,
+                                        color: isDarkMode ? Colors.white54 : Colors.black38,
+                                      ),
+                                    ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               Container(
@@ -464,13 +820,14 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                     hintText: 'Enter your email',
                                     hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
                                   ),
+                                  readOnly: _isSocialSignIn,
+                                  enabled: !_isSocialSignIn,
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 30),
                           
-                          // Save Profile Button
                           SizedBox(
                             width: double.infinity,
                             height: 50,
@@ -483,7 +840,7 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                                 ),
                               ),
                               child: Text(
-                                'Save',
+                                _isSocialSignIn ? 'Save Profile Image' : 'Save',
                                 style: TextStyle(
                                   color: isDarkMode ? Colors.white70 : Colors.black54,
                                   fontSize: 18,
@@ -495,29 +852,54 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
                           
                           const SizedBox(height: 20),
                           
-                          // Change Password Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.lock, color: Colors.white),
-                              label: const Text(
-                                'Change Password',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                          if (!_isSocialSignIn)
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.lock, color: Colors.white),
+                                label: const Text(
+                                  'Change Password',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              onPressed: _navigateToChangePassword,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[700],
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                onPressed: _navigateToChangePassword,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey[700],
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          
+                          if (_isSocialSignIn)
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.info_outline, color: Colors.white),
+                                label: const Text(
+                                  'Manage Account',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                onPressed: _showSocialSignInInfo,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey[700],
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -528,295 +910,11 @@ class _ProfileSettingScreenState extends State<ProfileSettingScreen> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    super.dispose();
-  }
-}
-
-// Separate Change Password Screen
-class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
-
-  @override
-  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
-}
-
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  final _authService = AuthService();
-  final TextEditingController _currentPasswordController = TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
-  String _errorMessage = '';
-
-  Future<void> _changePassword() async {
-    // Validate passwords match
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      setState(() {
-        _errorMessage = 'New passwords do not match';
-      });
-      return;
-    }
-    
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final currentPassword = _currentPasswordController.text;
-      final newPassword = _newPasswordController.text;
-      
-      if (currentPassword.isEmpty || newPassword.isEmpty) {
-        setState(() {
-          _errorMessage = 'Please enter both current and new password';
-          _isLoading = false;
-        });
-        return;
-      }
-      
-      // Get current user
-      final User? user = _authService.currentUser;
-      
-      if (user == null || user.email == null) {
-        setState(() {
-          _errorMessage = 'User not found. Please sign in again.';
-          _isLoading = false;
-        });
-        return;
-      }
-      
-      // Create credentials with current password
-      final AuthCredential credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: currentPassword,
-      );
-      
-      // Re-authenticate user
-      await user.reauthenticateWithCredential(credential);
-      
-      // Change password
-      await user.updatePassword(newPassword);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password changed successfully')),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      setState(() {
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'wrong-password':
-              _errorMessage = 'Current password is incorrect';
-              break;
-            case 'weak-password':
-              _errorMessage = 'New password is too weak (at least 6 characters required)';
-              break;
-            case 'requires-recent-login':
-              _errorMessage = 'Please sign out and sign in again before changing your password';
-              break;
-            default:
-              _errorMessage = 'Authentication error: ${e.message}';
-          }
-        } else {
-          _errorMessage = 'An error occurred. Please try again.';
-        }
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
-    return Scaffold(
-      backgroundColor: Colors.deepPurple,
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        elevation: 0,
-        title: const Text('Change Password', style: TextStyle(color: Colors.black)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Icon(
-                        Icons.lock,
-                        size: 80,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    
-                    if (_errorMessage.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withAlpha(26), // Using withAlpha instead of withOpacity
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _errorMessage,
-                            style: TextStyle(
-                              color: Colors.red[400],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    
-                    Text(
-                      'Current Password:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: TextField(
-                        controller: _currentPasswordController,
-                        obscureText: true,
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                          hintText: 'Enter your current password',
-                          hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'New Password:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: TextField(
-                        controller: _newPasswordController,
-                        obscureText: true,
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                          hintText: 'Enter your new password',
-                          hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Confirm New Password:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: true,
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                          hintText: 'Confirm your new password',
-                          hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black38),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _changePassword,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Change Password',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 }
