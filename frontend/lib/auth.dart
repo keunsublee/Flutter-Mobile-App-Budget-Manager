@@ -2,12 +2,104 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http; 
+import 'dart:convert';
 
+  final String baseUrl = 'https://group-one-backend-1076960172153.us-central1.run.app';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
+
+Future<void> userPost({
+  required String uuid,
+  required String idToken,
+  required String email,
+  required String firstName,
+  required String lastName,
+  required String imgUrl,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/public.user/$uuid'),
+    headers: {
+      'Authorization': 'Bearer $idToken',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'email': email,
+      'first_name': firstName,
+      'last_name': lastName,
+      'img_url': imgUrl,
+    }),
+  );
+
+  
+  Future<Map<String, dynamic>?> userGet() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user signed in');
+    final idToken = await user.getIdToken();
+    final uuid = user.uid;
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/public.user/$uuid'),
+      headers: {
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> userList = jsonDecode(response.body);
+      if (userList.isNotEmpty) {
+        return userList[0] as Map<String, dynamic>;
+      }
+      return null;
+    } else if (response.statusCode == 404) {
+      return null;
+    } else {
+      throw Exception('Failed to fetch user data: ${response.body}');
+    }
+  }
+
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to send user data: ${response.body}');
+  }
+}
+
+Future<void> userPatch({
+  required String uuid,
+  required String idToken,
+  String? email,
+  String? firstName,
+  String? lastName,
+  String? imgUrl,
+}) async {
+  // Build the data map with only non-null fields
+  final Map<String, dynamic> data = {};
+  if (email != null) data['email'] = email;
+  if (firstName != null) data['first_name'] = firstName;
+  if (lastName != null) data['last_name'] = lastName;
+  if (imgUrl != null) data['img_url'] = imgUrl;
+
+  if (data.isEmpty) {
+    throw Exception('No data provided for update.');
+  }
+
+  final response = await http.patch(
+    Uri.parse('$baseUrl/public.user/$uuid'),
+    headers: {
+      'Authorization': 'Bearer $idToken',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode(data),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to update user data: ${response.body}');
+  }
+}
 
 Future<void> signInWithGitHub() async {
   try {
@@ -96,4 +188,6 @@ Future<void> signInWithGitHub() async {
         return e.message ?? 'An error occurred.';
     }
   }
+
+
 }
