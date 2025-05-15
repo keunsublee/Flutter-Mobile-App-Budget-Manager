@@ -11,8 +11,8 @@ final _router =
     Router()
       ..get('/', _rootHandler)
       // User routes
-      ..get('/user/<email>', _userGet)
-      ..post('/user/<email>', _userPost)
+      ..get('/user/<uuid>', _userGet)
+      ..post('/user/<uuid>', _userPost)
       ..patch('/user/<uuid>', _userPatch)
       // Planning routes
       ..get('/planning/<uuid>', _planningGet)
@@ -28,9 +28,9 @@ Response _rootHandler(Request req) {
 
 // TODO: POST Request for putting data into database for all tables
 Future<Response> _userPost(Request request) async {
-  final email = request.params['email'];
+  final uuid = request.params['uuid'];
   final decode = jsonDecode(await request.readAsString());
-  final uuid = Uuid().v4();
+  // final uuid = Uuid().v4();
 
   // TODO: add email check here to see if user exists in database
 
@@ -57,18 +57,18 @@ Future<Response> _userPost(Request request) async {
   // add parameters to query
   final parameters = {
     'user_id': uuid,
-    'email': email,
+    'email': decode['email'],
     'first_name': decode['first_name'],
     'last_name': decode['last_name'],
     'img_url': decode['img_url'],
   };
-  if (email != null &&
+  if (decode['email'] != null &&
       decode['first_name'] != null &&
       decode['last_name'] != null &&
       decode['img_url'] != null) {
     try {
       await database.execute(query, parameters: parameters);
-      print("User has been added: $email");
+      print("User has been added: ${decode['email']}");
       return Response.ok("User has been added!");
     } catch (e) {
       print('Error inserting user: $e');
@@ -128,13 +128,13 @@ Future<Response> _planningPost(Request request) async {
 
 // TODO: GET Request for grabbing data from database from all tables
 Future<Response> _userGet(Request request) async {
-  final email = request.params['email'];
+  final uuid = request.params['uuid'];
 
   //query format
-  var query = Sql.named('SELECT * FROM public.users WHERE email = @email');
+  var query = Sql.named('SELECT * FROM public.users WHERE user_id = @user_id');
 
   // add parameters to query
-  final parameters = {'email': email};
+  final parameters = {'user_id': uuid};
 
   List<Map<dynamic, dynamic>> userList = [];
   try {
