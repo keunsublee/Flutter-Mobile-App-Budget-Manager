@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:group_1_project_2/theme.dart';
-import  'package:group_1_project_2/screens/profile.dart';
+import 'package:group_1_project_2/screens/profile.dart';
 import 'package:group_1_project_2/auth.dart';
-import  'package:group_1_project_2/screens/signin.dart';
+import 'package:group_1_project_2/screens/signin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:group_1_project_2/screens/budget.dart';
 import 'package:group_1_project_2/screens/dashboard.dart';
@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = false;
   User? _currentUser;
 
-   @override
+  @override
   void initState() {
     super.initState();
     _getCurrentUser();
@@ -42,6 +42,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _notificationsEnabled = !_notificationsEnabled;
     });
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.month}/${date.day}/${date.year}";
   }
 
   @override
@@ -89,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         padding: const EdgeInsets.only(left: 40.0),
                         child: Text(
                           _currentUser != null
-                              ? 'Signed in as: ${_currentUser!.email ?? _currentUser!.uid}'
+                              ? 'Signed in as: ${_currentUser!.displayName ?? _currentUser!.uid}'
                               : 'Not signed in',
                           style: const TextStyle(fontSize: 25),
                         ),
@@ -113,15 +117,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 25),
                       
-                      // Account Creation Date
+                      // Account Creation Date with the actual date in month/day/year format
                       Padding(
                         padding: const EdgeInsets.only(left: 40.0),
-                        child: Text(
-                          'Account Creation Date',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Theme.of(context).textTheme.bodyMedium?.color,
-                          ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Account Creation Date: ',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
+                              ),
+                            ),
+                            Text(
+                              _currentUser != null && _currentUser!.metadata.creationTime != null
+                                  ? _formatDate(_currentUser!.metadata.creationTime!)
+                                  : _formatDate(DateTime.now()),
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 25),
@@ -284,7 +301,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 205, 140, 135)),
                               child: const Text('Sign Out'),
                             ),
-                               ],
+                          ],
                         ),
                       ),
                     ],
