@@ -70,6 +70,21 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  void _signInWithGitHub() async {
+  try {
+    await _authService.signInWithGitHub();
+    _getCurrentUser();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed in with GitHub successfully!')),
+    );
+    Navigator.pop(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('GitHub Sign-in failed: $e')),
+    );
+  }
+}
+
 void _signUpWithEmail() async {
     try {
       await _authService.signUpWithEmail(
@@ -134,6 +149,13 @@ void _signUpWithEmail() async {
               onPressed: _signInWithGoogle,
               child: const Text('Google Login',
               style: TextStyle(fontSize: 20)),
+            ),
+            ElevatedButton(
+              onPressed: _signInWithGitHub,
+              child: const Text(
+                'GitHub Login',
+                style: TextStyle(fontSize: 20),
+              ),
             ),
             ElevatedButton(
               onPressed: _signUpWithEmail,
