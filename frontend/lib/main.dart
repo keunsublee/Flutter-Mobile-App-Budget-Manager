@@ -6,6 +6,7 @@ import 'package:group_1_project_2/screens/budget.dart';
 import 'package:group_1_project_2/screens/settings.dart';
 import 'package:group_1_project_2/screens/profile.dart';
 import 'package:group_1_project_2/theme.dart';
+import 'package:group_1_project_2/screens/dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,7 +70,8 @@ class MyApp extends StatelessWidget {
       // Named routes
       initialRoute: '/budget',
       routes: {
-        '/budget': (_) => const BudgetScreen(email: 'user@example.com'),
+        '/budget': (_) => const BudgetScreen(),
+        '/Dashboard': (_) => const DashboardScreen(),
         '/settings': (_) => const SettingsScreen(),
         '/profile': (_) => const ProfileSettingScreen(),
       },
